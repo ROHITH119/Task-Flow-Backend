@@ -35,19 +35,33 @@ const createTask = async ({ title, description, assignedTo, createdBy }) => {
   return task;
 };
 
-const getAllTasks = async ({ limit, cursor, status }) => {
+const getAllTasks = async ({ limit, cursor, status, assignedTo, search }) => {
   limit = Number(limit) || 10;
-  const query = {};
+  const query = {
+    $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
+  };
 
   if (status) {
     query.status = status;
+  }
+
+  if (assignedTo) {
+    query.assignedTo = assignedTo;
   }
 
   if (cursor) {
     query._id = { $lt: cursor };
   }
 
-  const tasks = await Task.find(query).sort({ _id: -1 }).limit(limit);
+  if(search) {
+    query.title = {$regex: search, $options: "i"}
+  }
+
+  const tasks = await Task.find(query)
+    .sort({ _id: -1 })
+    .limit(limit)
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email");
 
   const nextCursor = tasks.length > 0 ? tasks[tasks.length - 1]._id : null;
 
@@ -57,7 +71,7 @@ const getAllTasks = async ({ limit, cursor, status }) => {
   };
 };
 
-const getMyTasks = async ({ limit, cursor, status, assignedTo }) => {
+const getMyTasks = async ({ limit, cursor, status, assignedTo, search }) => {
   limit = Number(limit) || 10;
 
   if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
@@ -66,7 +80,9 @@ const getMyTasks = async ({ limit, cursor, status, assignedTo }) => {
     throw error;
   }
 
-  const query = {};
+  const query = {
+    $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
+  };
   if (status) {
     query.status = status;
   }
@@ -75,11 +91,22 @@ const getMyTasks = async ({ limit, cursor, status, assignedTo }) => {
     query._id = { $lt: cursor };
   }
 
+  if(assignedTo) {
   query.assignedTo = assignedTo;
+  }
 
-  const tasks = await Task.find(query).sort({ _id: -1 }).limit(limit);
+  if(search) {
+    query.title = {$regex: search, $options: "i"}
+  }
+
+  const tasks = await Task.find(query)
+    .sort({ _id: -1 })
+    .limit(limit)
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email");
 
   const nextCursor = tasks.length > 0 ? tasks[tasks.length - 1]._id : null;
+  // console.log(tasks);
 
   return {
     tasks,
@@ -128,7 +155,9 @@ const getTaskById = async ({ taskId, role, userId }) => {
     throw error;
   }
 
-  const task = await Task.findById(taskId);
+  const task = await Task.findById(taskId)
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email");
 
   if (!task) {
     const error = new Error("Task not found");
@@ -144,7 +173,87 @@ const getTaskById = async ({ taskId, role, userId }) => {
     }
   }
 
-  return task
+  return task;
 };
 
-module.exports = { createTask, getAllTasks, getMyTasks, updateTaskStatus, getTaskById };
+const deleteTaskById = async ({ taskId }) => {
+  if (!mongoose.Types.ObjectId.isValid(taskId)) {
+    const error = new Error("invalid task id");
+    error.status = 400;
+    throw error;
+  }
+
+  const task = await Task.findById(taskId);
+
+  if (!task || task.isDeleted) {
+    const error = new Error("task not found");
+    error.status = 404;
+    throw error;
+  }
+
+  task.isDeleted = true;
+  await task.save();
+
+  return task;
+};
+
+const updateTask = async ({ taskId, title, description, assignedTo }) => {
+  if (!mongoose.Types.ObjectId.isValid(taskId)) {
+    const error = new Error("Invalid task id");
+    error.status = 400;
+    throw error;
+  }
+
+  const task = await Task.findById(taskId);
+
+  if (!task) {
+    const error = new Error("Task not found");
+    error.status = 404;
+    throw error;
+  }
+
+  // Only update allowed fields
+  if (title !== undefined) {
+    task.title = title;
+  }
+
+  if (description !== undefined) {
+    task.description = description;
+  }
+
+  if (assignedTo !== undefined) {
+    if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
+      const error = new Error("Invalid assigned user id");
+      error.status = 400;
+      throw error;
+    }
+
+    const user = await User.findById(assignedTo);
+
+    if (!user) {
+      const error = new Error("Assigned user not found");
+      error.status = 404;
+      throw error;
+    }
+
+    task.assignedTo = assignedTo;
+  }
+
+  await task.save();
+
+  const updatedTask = await Task.findById(taskId)
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email");
+
+  return updatedTask;
+};
+
+module.exports = {
+  createTask,
+  getAllTasks,
+  getMyTasks,
+  updateTaskStatus,
+  getTaskById,
+  deleteTaskById,
+  updateTask,
+};

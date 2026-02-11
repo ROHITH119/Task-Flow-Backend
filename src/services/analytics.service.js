@@ -3,6 +3,9 @@ const Task = require("../models/task.model");
 const tasksByStatus = async () => {
   const result = await Task.aggregate([
     {
+      $match: {isDeleted: false}
+    },
+    {
       $group: {
         _id: "$status",
         count: { $sum: 1 },
@@ -22,6 +25,9 @@ const tasksByStatus = async () => {
 
 const tasksByMember = async () => {
   const result = await Task.aggregate([
+    {
+      $match: {isDeleted: false}
+    },
     {
       $group: {
         _id: "$assignedTo",
@@ -52,6 +58,9 @@ const tasksByMember = async () => {
 
 const tasksOverTime = async () => {
   const result = await Task.aggregate([
+    {
+      $match: {isDeleted: false}
+    },
     {
       $group: {
         _id: {

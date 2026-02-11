@@ -79,10 +79,45 @@ const getTaskById = async (req, res, next) => {
   }
 };
 
+const deleteTaskById = async(req , res , next) => {
+  try{
+    const taskId = req.params.id
+    const result = await taskService.deleteTaskById({taskId})
+
+    res.status(200).json({success: true, data: result})
+  } catch(err) {
+    next(err)
+  }
+}
+
+const updateTask = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+    const { title, description, assignedTo } = req.body;
+
+    const result = await taskService.updateTask({
+      taskId,
+      title,
+      description,
+      assignedTo,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 module.exports = {
   createTask,
   getAllTasks,
   getMyTasks,
   updateTaskStatus,
   getTaskById,
+  deleteTaskById,
+  updateTask
 };
