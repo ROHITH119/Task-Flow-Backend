@@ -1,6 +1,8 @@
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user.model");
+const crypto = require("crypto");
+const { sendEmail } = require("../utils/sendMail");
 
 const registerUser = async ({ name, email, password }) => {
   if (!name || !email || !password) {
@@ -33,7 +35,7 @@ const loginUser = async ({ email, password }) => {
     throw error;
   }
 
-  email = email.toLowerCase()
+  email = email.toLowerCase();
 
   const user = await User.findOne({ email }).select("+password");
 
@@ -64,8 +66,64 @@ const loginUser = async ({ email, password }) => {
 
   user.password = undefined;
 
-  return {user,token}
-
+  return { user, token };
 };
 
-module.exports = { registerUser, loginUser };
+const forgotPassword = async ({ email }) => {
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return;
+  }
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+  await user.save();
+
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+  await sendEmail({
+    to: user.email,
+    subject: "Reset your password",
+    html: `
+    <h2>Password Reset</h2>
+    <p>Click the link below to reset your password:</p>
+    <a href="${resetUrl}">${resetUrl}</a>
+    <p>This link expires in 10 minutes.</p>
+  `,
+  });
+};
+
+const resetPassword = async ({ token, newPassword }) => {
+  const hashedPassword = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedPassword,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    const error = Error("invalid or expired token");
+    error.status = 400;
+    throw error;
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+
+  await user.save();
+};
+
+module.exports = { registerUser, loginUser, forgotPassword, resetPassword };

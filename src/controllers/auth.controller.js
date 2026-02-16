@@ -22,11 +22,41 @@ const login = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: result,
-    })
-    
+    });
   } catch (err) {
     next(err);
   }
 };
 
-module.exports = { register, login };
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    await authService.forgotPassword({ email });
+
+    res.status(200).json({
+      success: true,
+      message: "If email exists, reset link sent",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const token = req.params.token;
+    const newPassword = req.body.newPassword;
+
+    await authService.resetPassword({ token, newPassword });
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
+    });
+  } catch (err) {
+    next(err)
+  }
+};
+
+module.exports = { register, login, forgotPassword, resetPassword };
