@@ -15,6 +15,8 @@ app.use(cors({
         "https://taskflowlite.netlify.app"
     ]
 }))
+
+// app.use(cors())
 app.use(express.json())
 
 app.use(logger)

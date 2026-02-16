@@ -100,6 +100,8 @@ const forgotPassword = async ({ email }) => {
     <p>This link expires in 10 minutes.</p>
   `,
   });
+
+  console.log(resetUrl)
 };
 
 const resetPassword = async ({ token, newPassword }) => {
