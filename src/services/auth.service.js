@@ -101,7 +101,7 @@ const forgotPassword = async ({ email }) => {
   `,
   });
 
-  console.log(resetUrl)
+  console.log(resetUrl);
 };
 
 const resetPassword = async ({ token, newPassword }) => {
