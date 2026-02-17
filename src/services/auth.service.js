@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user.model");
 const crypto = require("crypto");
-const { sendEmail } = require("../utils/sendMail");
+const { sendResetEmail } = require("../utils/sendMail");
 
 const registerUser = async ({ name, email, password }) => {
   if (!name || !email || !password) {
@@ -90,16 +90,8 @@ const forgotPassword = async ({ email }) => {
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
-  await sendEmail({
-    to: user.email,
-    subject: "Reset your password",
-    html: `
-    <h2>Password Reset</h2>
-    <p>Click the link below to reset your password:</p>
-    <a href="${resetUrl}">${resetUrl}</a>
-    <p>This link expires in 10 minutes.</p>
-  `,
-  });
+  await sendResetEmail(user.email, resetUrl);
+
 
   console.log(resetUrl);
 };
