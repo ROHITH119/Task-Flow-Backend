@@ -90,7 +90,7 @@ const forgotPassword = async ({ email }) => {
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
-  await sendResetEmail(user.email, resetUrl);
+  
 
 
   console.log(resetUrl);
